@@ -329,6 +329,7 @@ macro_rules! implement_uniform_block {
                         // checking that each member exists in the input struct
                         for &(ref name, _) in members {
                             if $(name != stringify!($field_name) &&)+ true {
+								println!("CAse 1");
                                 return Err(LayoutMismatchError::MissingField {
                                     name: name.clone(),
                                 });
@@ -344,23 +345,40 @@ macro_rules! implement_uniform_block {
 
                         // checking that each field of the input struct is correct in the reflection
                         $(
+							println!("Stringified name searched for: {:?}",stringify!($field_name));
+							for item in members.iter()
+							{
+							    println!("Member: {:?}",item.0.to_string());
+							}
                             let reflected_ty = members.iter().find(|&&(ref name, _)| {
                                                                         name == stringify!($field_name)
                                                                    });
+                            //println!("Reflected ty: {:?}",reflected_ty);
+                                                                   
                             let reflected_ty = match reflected_ty {
-                                Some(t) => &t.1,
-                                None => return Err(LayoutMismatchError::MissingField {
+                                Some(t) => {
+                                    println!("GOt some!");
+                                    &t.1},
+                                None => {println!("CAse 2");return Err(LayoutMismatchError::MissingField {
                                     name: stringify!($field_name).to_owned(),
-                                })
+                                })}
                             };
+                            println!("Passed match");
 
                             let input_offset = {
+                                println!("Input offset assignment 1a");
                                 let dummy: &$struct_name = unsafe { mem::zeroed() };
-                                let dummy_field: *const _ = &dummy.$field_name;
-                                dummy_field as *const () as usize
+                                let fat_pointer=&dummy.$field_name;
+                                let pfat_pointer:&u64=unsafe{mem::transmute( &fat_pointer )};
+                                
+                                println!("Input offset assignment 1d: {:?}",*pfat_pointer);
+                                let t=*pfat_pointer;
+                                t as usize
                             };
+                            println!("Calculated input offset: {}",input_offset);
 
-                            let dummy: &$struct_name = unsafe { mem::uninitialized() };
+                            let dummy: &$struct_name = unsafe { mem::zeroed() };
+                            println!("let dummy");
 
                             match matches_from_ty(&dummy.$field_name, reflected_ty, input_offset) {
                                 Ok(_) => (),
@@ -369,6 +387,7 @@ macro_rules! implement_uniform_block {
                                     err: Box::new(e),
                                 })
                             };
+                            println!("end of macro?");                            
                         )+
 
                         Ok(())

@@ -38,6 +38,7 @@ impl<U> UniformsExt for U where U: Uniforms {
                             -> Result<(), DrawError>
                             where P: ProgramExt
     {
+        println!("Binding uniforms start");
         let mut texture_bind_points = Bitsfield::new();
         let mut uniform_buffer_bind_points = Bitsfield::new();
         let mut shared_storage_buffer_bind_points = Bitsfield::new();
@@ -46,14 +47,17 @@ impl<U> UniformsExt for U where U: Uniforms {
         // The vec contains the uniform we want to set and the value we want to set it to.
         let mut subroutine_bindings: HashMap<program::ShaderStage, Vec<(&program::SubroutineUniform, &str)>, _>
             = HashMap::with_hasher(Default::default());
-
+        println!("Binding uniforms");
         let mut visiting_result = Ok(());
         self.visit_values(|name, value| {
+            println!("Binding uniforms 1");
             if visiting_result.is_err() { return; }
+            println!("Binding uniforms 2");
 
             if let Some(uniform) = program.get_uniform(name) {
                 // TODO: remove the size member
                 debug_assert!(uniform.size.is_none());
+                println!("Binding uniforms 3");
 
                 if !value.is_usable_with(&uniform.ty) {
                     visiting_result = Err(DrawError::UniformTypeMismatch {
@@ -74,6 +78,7 @@ impl<U> UniformsExt for U where U: Uniforms {
                 };
 
             } else if let Some(block) = program.get_uniform_blocks().get(name) {
+                println!("Binding uniforms 4");            
                 let fence = match bind_uniform_block(&mut ctxt, &value, block,
                                                      program, &mut uniform_buffer_bind_points, name)
                 {
@@ -89,21 +94,28 @@ impl<U> UniformsExt for U where U: Uniforms {
                 }
 
             } else if let Some(block) = program.get_shader_storage_blocks().get(name) {
+                println!("Binding uniforms 5, value");            
                 let fence = match bind_shared_storage_block(&mut ctxt, &value, block, program,
                                                             &mut shared_storage_buffer_bind_points,
                                                             name)
                 {
                     Ok(f) => f,
                     Err(e) => {
+                        println!("Binding uniforms 5a");            
                         visiting_result = Err(e);
                         return;
                     }
                 };
+                println!("Binding uniforms 5b");
 
                 if let Some(fence) = fence {
+                    println!("Binding uniforms 5c");
                     fences.push(fence);
+                    
                 }
+                println!("Binding uniforms 5d");
             } else if let UniformValue::Subroutine(stage, sr_name) = value {
+                println!("Binding uniforms 6");            
                 if let Some(subroutine_uniform) = program.get_subroutine_data().subroutine_uniforms.get(&(name.into(), stage)) {
                     subroutine_bindings.entry(stage).or_insert(Vec::new());
                     let vec = subroutine_bindings.get_mut(&stage).unwrap();
@@ -111,6 +123,7 @@ impl<U> UniformsExt for U where U: Uniforms {
                 }
             }
         });
+        println!("Binding uniforms 7");            
 
         // Process all subroutine uniforms in one batch.
         if !subroutine_bindings.is_empty() {
@@ -121,6 +134,7 @@ impl<U> UniformsExt for U where U: Uniforms {
                 }
             }
         }
+        println!("Binding uniforms 8");            
 
         visiting_result
     }
@@ -178,6 +192,7 @@ fn bind_uniform_block<'a, P>(ctxt: &mut context::CommandContext, value: &Uniform
             match layout(block) {
                 Ok(_) => (),
                 Err(e) => {
+                    println!("It's in the uniform!");
                     return Err(DrawError::UniformBlockLayoutMismatch {
                         name: name.to_owned(),
                         err: e,
@@ -209,31 +224,42 @@ fn bind_shared_storage_block<'a, P>(ctxt: &mut context::CommandContext, value: &
                                     -> Result<Option<Inserter<'a>>, DrawError>
                                     where P: ProgramExt
 {
+    println!("bind_shared_storage_block");
     match value {
         &UniformValue::Block(buffer, ref layout) => {
             match layout(block) {
                 Ok(_) => (),
                 Err(e) => {
+                    println!("It's in shared storage!");
                     return Err(DrawError::UniformBlockLayoutMismatch {
                         name: name.to_owned(),
                         err: e,
                     });
                 }
             }
+            println!("bind_shared_storage_block 1");
 
             let bind_point = buffer_bind_points.get_unused().expect("Not enough buffer units");
+            println!("bind_shared_storage_block 2");
             buffer_bind_points.set_used(bind_point);
 
+            println!("bind_shared_storage_block 3");
             assert!(buffer.get_offset_bytes() == 0);     // TODO: not implemented
+            println!("bind_shared_storage_block 4");
             let fence = buffer.add_fence();
+            println!("bind_shared_storage_block 5");
             let block_id = block.id as gl::types::GLuint;
+            println!("bind_shared_storage_block 6");
 
             buffer.prepare_and_bind_for_shared_storage(ctxt, bind_point as gl::types::GLuint);
+            println!("bind_shared_storage_block 7");
             program.set_shader_storage_block_binding(ctxt, block_id, bind_point as gl::types::GLuint);
+            println!("bind_shared_storage_block 8");
 
             Ok(fence)
         },
         _ => {
+            println!("bind_shared_storage_block 9");
             Err(DrawError::UniformValueToBlock { name: name.to_owned() })
         }
     }

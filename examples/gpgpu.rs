@@ -4,8 +4,13 @@ extern crate rand;
 use glium::glutin;
 
 fn main() {
-    let context = glutin::HeadlessRendererBuilder::new(1024, 1024).build().unwrap();
-    let display = glium::HeadlessRenderer::new(context).unwrap();
+    /*let context = glutin::HeadlessRendererBuilder::new(1024, 1024).build().unwrap();
+    let display = glium::HeadlessRenderer::new(context).unwrap();*/
+    let events_loop = glutin::EventsLoop::new();    
+    let window = glutin::WindowBuilder::new();
+    let context = glutin::ContextBuilder::new();
+    let display = glium::Display::new(window, context, &events_loop).unwrap();
+    
 
     let program = glium::program::ComputeShader::from_source(&display, r#"\
 
@@ -13,25 +18,31 @@ fn main() {
             layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
             layout(std430) buffer MyBlock {
-                float power;
-                float values[256];
+                float power2;
+                float padding1;
+                float padding2;
+                float padding3;
+                float values[];
             };
 
             void main() {
                 float val = values[gl_GlobalInvocationID.x];
-                values[gl_GlobalInvocationID.x] = pow(val, power);
+                values[gl_GlobalInvocationID.x] = pow(val, power2);
             }
 
         "#).unwrap();
 
+    #[repr(C)]
     struct Data {
-        power: f32,
-        _padding: [f32; 3],
+        power2: f32,
+        padding1: f32,
+        padding2: f32,
+        padding3: f32,
         values: [f32],
     }
 
     implement_buffer_content!(Data);
-    implement_uniform_block!(Data, power, values);
+    implement_uniform_block!(Data, power2, padding1, padding2, padding3, values);
 
     const NUM_VALUES: usize = 4096;
 
@@ -40,20 +51,20 @@ fn main() {
 
     {
         let mut mapping = buffer.map();
-        mapping.power = rand::random();
+        mapping.power2 = 3.0;
         for val in mapping.values.iter_mut() {
-            *val = rand::random();
+            *val = 2.0;//rand::random();
         }
     }
 
-    program.execute(uniform! { MyBlock: &*buffer }, 4096, 1, 1);
+    program.execute(uniform! { MyBlock: &*buffer }, NUM_VALUES as u32, 1, 1);
 
     {
         let mapping = buffer.map();
-        println!("Power is: {:?}", mapping.power);
-        for val in mapping.values.iter().take(10) {
-            println!("{:?}", *val);
+        println!("Power is: {:?}", mapping.power2);
+        for val in mapping.values.iter() {
+            print!("{:?}", *val);
         }
-        println!("...");
+        println!(".");
     }
 }
