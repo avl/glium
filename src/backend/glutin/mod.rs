@@ -163,6 +163,19 @@ impl Display {
         self.gl_window.borrow()
     }
 
+    /// Extract the inner WindowedContext, and hand it to the given closure.
+    /// This is useful to make the context not-current, so that it can be sent to
+    /// another thread, for setting up resource loading in a background-thread.
+    ///
+    /// Safety: The context must be returned unscathed by the closure. It must still
+    /// be current if it was current before.
+    pub unsafe fn take_gl_window<F:FnMut(glutin::WindowedContext<Pc>) -> glutin::WindowedContext<Pc>>(&mut self,mut f:F) {
+        let mut takeable_context = self.gl_window.borrow_mut();
+        let bare_context = Takeable::take(&mut takeable_context);
+        let new_bare_context = f(bare_context);
+        Takeable::insert(&mut takeable_context, new_bare_context);
+    }
+
     /// Start drawing on the backbuffer.
     ///
     /// This function returns a `Frame`, which can be used to draw on it. When the `Frame` is
