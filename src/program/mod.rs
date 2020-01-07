@@ -141,7 +141,7 @@ impl fmt::Display for ProgramCreationError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         use self::ProgramCreationError::*;
         match *self {
-            CompilationError(ref s) =>
+            CompilationError(ref s, _) =>
                 write!(fmt, "{}: {}", self.description(), s),
             LinkingError(ref s) =>
                 write!(fmt, "{}: {}", self.description(), s),
