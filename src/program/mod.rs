@@ -63,7 +63,7 @@ lazy_static! {
 }
 
 /// Used in ProgramCreationError::CompilationError to explain which shader stage failed compilation 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ShaderType {
     /// Vertex shader, maps to gl::VERTEX_SHADER
     Vertex,
@@ -141,7 +141,7 @@ impl fmt::Display for ProgramCreationError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         use self::ProgramCreationError::*;
         match *self {
-            CompilationError(ref s, _) =>
+            CompilationError(ref s) =>
                 write!(fmt, "{}: {}", self.description(), s),
             LinkingError(ref s) =>
                 write!(fmt, "{}: {}", self.description(), s),
@@ -162,7 +162,7 @@ impl Error for ProgramCreationError {
                     ShaderType::Fragment => "Compilation error in fragment shader",
                     ShaderType::TesselationControl => "Compilation error in tesselation control shader",
                     ShaderType::TesselationEvaluation => "Compilation error in tesselation evaluation shader",
-                    ShaderType::Compute => "Compilation error in one of the compute shader"
+                    ShaderType::Compute => "Compilation error in compute shader"
                 }
             },
             LinkingError(_) =>

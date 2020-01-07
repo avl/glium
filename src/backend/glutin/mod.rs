@@ -169,7 +169,7 @@ impl Display {
     ///
     /// Safety: The context must be returned unscathed by the closure. It must still
     /// be current if it was current before.
-    pub unsafe fn take_gl_window<F:FnMut(glutin::WindowedContext<Pc>) -> glutin::WindowedContext<Pc>>(&mut self,mut f:F) {
+    pub unsafe fn take_gl_window<F:FnOnce(glutin::WindowedContext<Pc>) -> glutin::WindowedContext<Pc>>(&mut self,mut f:F) {
         let mut takeable_context = self.gl_window.borrow_mut();
         let bare_context = Takeable::take(&mut takeable_context);
         let new_bare_context = f(bare_context);
